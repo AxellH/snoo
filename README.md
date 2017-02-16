@@ -12,9 +12,10 @@ A Reddit command line client written in Node.js, using modern ES-features
 $ git clone git@github.com:twostairs/snoo.git
 $ cd snoo
 $ npm install
-$ cp .env.example .env
-$ vim .env # & adjust settings
-$ npm start
+$ cp .env.example ~/.config/snoo
+$ vim ~/.config/snoo # & adjust settings
+$ vim ~/.bashrc # or .bash_profile, .zshrc, ... -> add `source ~/.config/snoo`
+$ npm link
 ```
 
 In order to get `REDDIT_APP_KEY` and `REDDIT_APP_SECRET` you need to [create your own reddit app](https://www.reddit.com/prefs/apps/) as a `script`. `name`, `description`, `about url` and `redirect url` don't matter.
@@ -24,7 +25,7 @@ For `REDDIT_USERNAME` and `REDDIT_PASSWORD` you need to enter the credentials of
 ## Running
 
 ```bash
-$ npm start
+$ snoo
 ```
 
 ## Usage

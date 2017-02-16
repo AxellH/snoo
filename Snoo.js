@@ -91,9 +91,9 @@ module.exports.default = class Snoo {
 
         const updateSuccess = await this.updateArticlesList();
 
-        if(process.env.hasOwnProperty('AUTO_UPDATE_INTERVAL') === true) {
+        if(process.env.hasOwnProperty('SNOO_AUTO_UPDATE_INTERVAL') === true) {
             const oneMinuteInMilliseconds = 60000;
-            const autoUpdateInterval = parseInt(process.env.AUTO_UPDATE_INTERVAL, 10) * oneMinuteInMilliseconds;
+            const autoUpdateInterval = parseInt(process.env.SNOO_AUTO_UPDATE_INTERVAL, 10) * oneMinuteInMilliseconds;
             const autoUpdateIntervalRunner = setInterval(async () => {
                 return await this.updateArticlesList();
             }, autoUpdateInterval);
