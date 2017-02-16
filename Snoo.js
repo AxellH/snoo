@@ -7,20 +7,19 @@ const _ = require('lodash');
 const packageJson = require('./package.json');
 
 const MessageBox = require('./UI/MessageBox').default;
-const PostingsList = require('./UI/PostingsList').default;
+const ArticlesList = require('./UI/ArticlesList').default;
+const ArticleView = require('./UI/ArticleView').default;
 
 module.exports.default = class Snoo {
     constructor() {
         this._store = {};
 
-        this._screen = blessed.screen({
-            'smartCSR': true
-        });
+        this._views = [];
+        this._viewIndex = 0;
 
-        this._screen.title = 'Snoo';
-        this._screen.key('q', () => {
-            this._screen.destroy();
-        });
+        this._articlesList = null;
+
+        this._currentUri = '/hot';
 
         this._reddit = new Snoocore({
             'userAgent': '/u/mrusme snoo@' + packageJson.version,
@@ -45,64 +44,59 @@ module.exports.default = class Snoo {
         });
     }
 
+    screenSetup() {
+        this._screen = blessed.screen({
+            autoPadding: true,
+            fullUnicode: true,
+            dockBorders: true
+        });
+
+        this._screen.key('C-q', () => {
+            this._screen.destroy();
+            process.exit(0);
+        });
+
+        this._screen.title = 'Snoo';
+    }
+
+    get screen() {
+        return this._screen;
+    }
+
+    pushView(view) {
+        let newLength = this._views.push(view);
+
+        this._viewIndex = (newLength - 1);
+        this._views[this._viewIndex].render();
+    }
+
+    goBack() {
+        this._views[this._viewIndex].destroy();
+        this._views.pop();
+
+        this._viewIndex--;
+        this._views[this._viewIndex].render();
+    }
+
     async run() {
         const loggedIn = await this.login();
 
         if(loggedIn === false) {
+            console.error('login failed: Could not log in.');
             return false;
         }
 
-        const postings = await this.postings('/r/all/hot');
+        this.screenSetup();
+        this._articlesList = this.initArticlesList();
 
-        return true;
-    }
+        const updateSuccess = await this.updateArticlesList();
 
-    async postings(uri) {
-        try {
-            this._store.$hot = await this._reddit(uri).listing();
-
-            let data = [
-                [
-                    'Score',
-                    'Subreddit',
-                    'Title',
-                    'Author'
-                ]
-            ];
-
-            _.forEach(this._store.$hot.children, (child) => {
-                let scoreString = child.data.score.toString();
-                const title = entities.decode(child.data.title);
-                const subreddit = child.data.subreddit;
-                const author = child.data.author;
-
-                if(child.data.score > 999) {
-                    scoreString = (child.data.score / 1000).toFixed(1) + 'k';
-                }
-
-                data.push([
-                    scoreString,
-                    subreddit,
-                    title,
-                    author
-                ]);
-            });
-
-            // console.log('%j', data);
-
-            let postingsList = new PostingsList({
-                'screen': this._screen,
-                'data': data
-            });
-        } catch(err) {
-            console.log('%j', err);
-            // const msgbox = new MessageBox({
-            //     'screen': this._screen,
-            //     'title': 'Error',
-            //     'text': err,
-            //     'timeout': MessageBox.DISPLAY_NO_TIMEOUT
-            // });
-            return false;
+        if(process.env.hasOwnProperty('AUTO_UPDATE_INTERVAL') === true) {
+            const oneMinuteInMilliseconds = 60000;
+            const autoUpdateInterval = parseInt(process.env.AUTO_UPDATE_INTERVAL, 10) * oneMinuteInMilliseconds;
+            const autoUpdateIntervalRunner = setInterval(async () => {
+                return await this.updateArticlesList();
+            }, autoUpdateInterval);
         }
 
         return true;
@@ -110,24 +104,143 @@ module.exports.default = class Snoo {
 
     async login() {
         try {
-            let msgbox = new MessageBox({
-                'screen': this._screen,
-                'title': 'Login',
-                'text': 'Please wait while logging you in ...',
-                'timeout': MessageBox.DISPLAY_NO_TIMEOUT
-            });
+            console.log('logging into reddit ...');
+            const auth = await this._reddit.auth();
             this._store.me = await this._reddit('/api/v1/me').get();
-            msgbox.destroy();
         } catch(err) {
-            const msgbox = new MessageBox({
-                'screen': this._screen,
-                'title': 'Error',
-                'text': err,
-                'timeout': MessageBox.DISPLAY_NO_TIMEOUT
-            });
+            console.error('login failed: %j', err);
             return false;
         }
 
         return true;
     }
+
+    async querier(uri, slicesToLoad) {
+        let slice = null;
+        let rawArray = [];
+
+        try {
+            slice = await this._reddit(uri).listing();
+            for(let i = 1; i <= slicesToLoad; i++) {
+                rawArray = _.concat(rawArray, slice.children);
+                slice = await slice.next();
+            }
+        } catch(err) {
+            console.error('querier failed: %j', err);
+            return null;
+        }
+
+        return rawArray;
+    }
+
+    async queryGenericRaw(uri, slicesToLoad) {
+        return await this.querier(uri, slicesToLoad);
+    }
+
+    async queryArticlesRaw(uri) {
+        const slicesToLoad = 2;
+        return this.queryGenericRaw(uri, slicesToLoad);
+    }
+
+
+    async queryCommentsRaw(articleId) {
+        return await this._reddit('/comments/$article').get({
+            'sort': 'confidence',
+            // 'context': 8,
+            '$article': articleId
+        });
+    }
+
+    initArticlesList(uri) {
+        const articlesList = new ArticlesList({
+            'driver': blessed,
+            'screen': this.screen
+        });
+
+        // Preview article from articles list
+        articlesList.widget.key('space', () => {
+            const dataIndex = articlesList.widget.selected - 1;
+            const isSelf = articlesList.raw[dataIndex].data.is_self;
+            const url = articlesList.raw[dataIndex].data.url;
+            const title = entities.decode(articlesList.raw[dataIndex].data.title);
+            const author = articlesList.raw[dataIndex].data.author;
+            let body = entities.decode(articlesList.raw[dataIndex].data.selftext);
+
+            if(isSelf === false) {
+                body = url;
+            }
+
+            const text = `{cyan-fg}${title}{/cyan-fg}\nby ${author}\n\n${body}`;
+
+            let msgbox = new MessageBox({
+                'driver': blessed,
+                'screen': this.screen,
+                'title': 'Preview',
+                'text': text,
+                'timeout': MessageBox.DISPLAY_NO_TIMEOUT
+            });
+        });
+
+        // Refresh articles list
+        articlesList.widget.key('C-r', async () => {
+            const updateSuccess = await this.updateArticlesList();
+        });
+
+        // Open any article and view it instead of launching a browser
+        articlesList.widget.key('C-v', async () => {
+            const dataIndex = articlesList.widget.selected - 1;
+            const articleView = this.initArticleView(articlesList.raw[dataIndex]);
+        });
+
+        // Press enter on article in articles list
+        articlesList.widget.on('select', () => {
+            const dataIndex = articlesList.widget.selected - 1;
+            const isSelf = articlesList.raw[dataIndex].data.is_self;
+            const url = articlesList.raw[dataIndex].data.url;
+
+            if(isSelf === true) {
+                const articleView = this.initArticleView(articlesList.raw[dataIndex]);
+            } else {
+                this.screen.spawn(process.env.BROWSER, [url]);
+            }
+        });
+
+        this.pushView(articlesList);
+        return articlesList;
+    }
+
+    async updateArticlesList() {
+        try {
+            this._articlesList.raw = await this.queryArticlesRaw(this._currentUri);
+        } catch(err) {
+            console.error('updateArticlesList failed: %j', err);
+            return false;
+        }
+
+        return true;
+    }
+
+    initArticleView(raw) {
+        const articleView = new ArticleView({
+            'driver': blessed,
+            'screen': this.screen
+        });
+
+        articleView.widget.key('escape', () => {
+            this.goBack();
+        });
+
+        articleView.raw = raw;
+
+        this.queryCommentsRaw(raw.data.id).then(rawData => {
+            articleView.rawComments = rawData[1].data.children;
+        }).catch(err => {
+            console.error('queryCommentsRaw failed: %j', err);
+        });
+
+        this.pushView(articleView);
+        return articleView;
+    }
+
+
 };
