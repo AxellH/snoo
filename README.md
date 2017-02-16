@@ -12,7 +12,7 @@ A Reddit command line client written in Node.js, using modern ES-features
 $ git clone git@github.com:twostairs/snoo.git
 $ cd snoo
 $ npm install
-$ cp .env.example ~/.config/snoo
+$ cat .env.example | while read line; do echo export $line; done > ~/.config/snoo
 $ vim ~/.config/snoo # & adjust settings
 $ vim ~/.bashrc # or .bash_profile, .zshrc, ... -> add `source ~/.config/snoo`
 $ npm link
