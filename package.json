@@ -1,7 +1,7 @@
 {
   "name": "snoo",
-  "version": "0.1.0",
-  "description": "Reddit command line client",
+  "version": "0.2.0",
+  "description": "A Reddit command line client written in Node.js, using modern ES-features",
   "main": "cli.js",
   "scripts": {
     "start": "node --harmony ./cli.js",
