@@ -2,6 +2,8 @@
 
 A Reddit command line client written in Node.js, using modern ES-features
 
+![Snoo](demo.gif)
+
 ## Installation
 
 ### GitHub
