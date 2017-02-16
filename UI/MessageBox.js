@@ -1,17 +1,17 @@
-const blessed = require('blessed');
 const UI = require('./UI').default;
 
 module.exports.default = class MessageBox extends UI {
     constructor(args) {
         super(args);
 
-        this._widget = blessed.message({
-            parent: this._screen,
+        this._widget = this.driver.message({
+            parent: this.screen,
             border: 'line',
             height: 'shrink',
             width: 'half',
             top: 'center',
             left: 'center',
+            padding: 1,
             label: ' {blue-fg}' + args.title + '{/blue-fg} ',
             tags: true,
             keys: true,
@@ -20,9 +20,7 @@ module.exports.default = class MessageBox extends UI {
         });
 
         this._widget.display(args.text, args.timeout, () => {
-            this.destroy();
+            this._widget.destroy();
         });
-
-        this._screen.render();
     }
 };

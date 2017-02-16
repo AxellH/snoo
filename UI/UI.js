@@ -1,11 +1,28 @@
 module.exports.default = class UI {
     constructor(args) {
+        this._driver = args.driver;
         this._screen = args.screen;
+    }
+
+    get driver() {
+        return this._driver;
+    }
+
+    get screen() {
+        return this._screen;
+    }
+
+    get widget() {
+        return this._widget;
+    }
+
+    render() {
+        // this._screen.realloc();
+        this._screen.render();
     }
 
     destroy() {
         this._widget.destroy();
-        this._screen.render();
     }
 
     static get DISPLAY_NO_TIMEOUT() {
