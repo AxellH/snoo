@@ -39,6 +39,7 @@
   "homepage": "https://github.com/twostairs/snoo#readme",
   "dependencies": {
     "blessed": "^0.1.81",
+    "bunyan": "^1.8.5",
     "dotenv": "^4.0.0",
     "html-entities": "^1.2.0",
     "lodash": "^4.17.4",
