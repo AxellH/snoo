@@ -1,4 +1,4 @@
-#!/usr/bin/env node --harmony
+#!/usr/bin/env node
 require('dotenv').config();
 const Snoo = require('./Snoo').default;
 const snoo = new Snoo();

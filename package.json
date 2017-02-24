@@ -1,6 +1,6 @@
 {
   "name": "snoo",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A Reddit command line client written in Node.js, using modern ES-features",
   "main": "cli.js",
   "preferGlobal": "true",
@@ -8,7 +8,7 @@
     "snoo": "./cli.js"
   },
   "scripts": {
-    "start": "node --harmony ./cli.js",
+    "start": "node ./cli.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -16,7 +16,7 @@
     "url": "git+https://github.com/twostairs/snoo.git"
   },
   "engines": {
-    "node": ">=7.4.0"
+    "node": ">=7.6.0"
   },
   "keywords": [
     "snoo",
